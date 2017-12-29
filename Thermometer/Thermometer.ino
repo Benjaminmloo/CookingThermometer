@@ -29,8 +29,8 @@ const char* WIFI_SSID     = "A380";
 const char* WIFI_PASS = "5198236565";
 
 // Adafruit IO
-#define AIO_USERNAME    "BML"
-#define AIO_KEY         "516088c495ec425d87e264b0b1518bd0"
+#define AIO_USERNAME    "lloo"
+#define AIO_KEY         "4f4b4bc8eeb04d3bb376497471c6e0ec"
 
 #include "AdafruitIO_WiFi.h"
 AdafruitIO_WiFi io(AIO_USERNAME, AIO_KEY, WIFI_SSID, WIFI_PASS);
