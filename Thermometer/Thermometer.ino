@@ -46,7 +46,7 @@ const char* WIFI_PASS = "5198236565";
 #define LOGIC_HIGH_V  3.3
 
 #define NUM_SETTINGS 3
-#define CYCLES_TO_UPLD 20
+#define CYCLES_TO_UPLD 40
 #define NUM_SAMPLES 10
 
 #define CHAR_W 6
@@ -55,7 +55,10 @@ const char* WIFI_PASS = "5198236565";
 AdafruitIO_WiFi io(AIO_USERNAME, AIO_KEY, WIFI_SSID, WIFI_PASS);
 
 AdafruitIO_Feed *currentTemp =        io.feed("currentTemp");
+AdafruitIO_Feed *timeEstimate =       io.feed("timeEstimate");
+AdafruitIO_Feed *batteryVoltage =     io.feed("batteryVoltage");
 AdafruitIO_Feed *temperatureReached = io.feed("temperatureReached");
+
 
 int buttonA;
 int buttonB;
@@ -83,6 +86,7 @@ float lastTemp;
 float currTemp;
 
 float tempData[NUM_SAMPLES];
+float battData[NUM_SAMPLES];
 
 bool even = true;
 
@@ -211,8 +215,9 @@ void printBat(float batt){
 
 void printTimeEstimate(float timeToDone){
   oled.setCursor(0, CHAR_H * 3);
+  oled.print("EST:  ");
   oled.print(timeToDone);
-  oled.print("min");
+  oled.print(" min");
 }
 
 /****************************************************
@@ -221,6 +226,8 @@ void printTimeEstimate(float timeToDone){
 
 void loop() {
   int batraw;
+  int i;
+  
   unsigned long period;
   float battery;
   float tempDiff;
@@ -231,11 +238,26 @@ void loop() {
   io.run();
     
   //read new sensor values
-  currTemp = max.temperature(100, RREF);
+  //values are read out with running averages n
+  //num sampes set in parameters above
+  
+  tempData[cycleNum % NUM_SAMPLES] = max.temperature(100, RREF);
+
+  currTemp = 0;
+  for(i = 0; i < NUM_SAMPLES; i ++)
+    currTemp += tempData[i];
+
+  currTemp /= (float)NUM_SAMPLES;
 
   batraw = analogRead(pinBatLvl);
-  //divide by max value/multiply by max possible voltage/double to account for voltage divide circuit  
-  battery = (float)(batraw * LOGIC_HIGH_V * 2) / MAX_A_VAL;
+  //divide by max value/multiply by max possible voltage/double to account for voltage divide circuit
+  battData[cycleNum % NUM_SAMPLES] = (float)(batraw * LOGIC_HIGH_V * 2) / MAX_A_VAL;;
+
+  battery = 0;
+  for(i = 0; i < NUM_SAMPLES; i ++)
+    battery += battData[i];
+
+  battery /= (float)NUM_SAMPLES;
 
   //if the temerature difference between samples is greater than 0.1 degC
   //update estimate
@@ -334,8 +356,11 @@ void loop() {
 
   if(alarmOn){
     if(cycleNum == 0)
+    {
       currentTemp->save(currTemp);
-
+      timeEstimate->save(timeToFinish);
+      batteryVoltage->save(battery);
+    }
     //when the timer reaches the value display done, flash the value off every third cycle
     if(tempReached && setSelect == 0 && cycleNum % 3 != 0)
       printDone();
